@@ -370,6 +370,14 @@ function voice(name,delay=0,vol=1){
   bp.connect(lp);lp.connect(out);out.connect(MG);
 }
 const NOTE=n=>523.25*Math.pow(2,n/12); // n=0 がド
+/* 拍手：小さな「パチ」を不規則に重ねる（合成） */
+function clapAt(t,v){if(!AC)return;const n=Math.floor(AC.sampleRate*.06),b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++){d[i]=(Math.random()*2-1)*Math.pow(1-i/n,6);}
+ const s=AC.createBufferSource();s.buffer=b;const bp=AC.createBiquadFilter();bp.type='bandpass';bp.frequency.value=900+Math.random()*1300;bp.Q.value=1.2;const hp=AC.createBiquadFilter();hp.type='highpass';hp.frequency.value=400;
+ const g=AC.createGain();g.gain.value=v;s.connect(bp).connect(hp).connect(g).connect(MG);s.start(AC.currentTime+t);}
+function applause(delay=0,dur=2.6,dens=38,v=.55){
+  const N=Math.floor(dur*dens);
+  for(let i=0;i<N;i++){const t=Math.random()*dur;const env=t<.35?t/.35:Math.max(0,1-(t-.35)/(dur-.35))*.9+.1;clapAt(delay+t,v*env*(.6+Math.random()*.4));}
+}
 const sfx={
   pick(){tone(560,.08,'sine',.16,1.7);},
   drop(){tone(240,.16,'sine',.3,.55);tone(500,.08,'triangle',.08,.8,.03);},
@@ -389,7 +397,7 @@ const sfx={
   shuffle(){for(let i=0;i<6;i++)bubble(.14,i*.05,.8+Math.random()*.8);},
   ufo(){tone(260,.7,'sine',.14,3.2);tone(270,.7,'triangle',.05,3);voice('nyaQ',.55);},
   freeze(){[24,19,16,12].forEach((n,i)=>bell(NOTE(n),.1,i*.07,.7));shimmer(6,.05,.1);},
-  win(){voice('nya',0);voice('nyan',.35);[0,4,7,12,16,19,24].forEach((n,i)=>bell(NOTE(n),.13,.7+i*.08,.8));shimmer(14,.05,.8);},
+  win(){applause(.05,2.6);[0,4,7,12,16,19,24].forEach((n,i)=>bell(NOTE(n),.12,i*.08,.8));shimmer(14,.05,.5);}, // クリア：拍手＋ファンファーレ
   lose(){voice('nyaQ',0);tone(330,.5,'triangle',.08,.6,.4);},
 };
 
@@ -452,7 +460,7 @@ function newLevel(lv){
   const inLocked=new Set();locked.forEach(p=>{pods[p].slots.forEach(t=>t!=null&&inLocked.add(t));pods[p].layers.forEach(L=>L.forEach(t=>t!=null&&inLocked.add(t)));});
   const cand=shuffle(types.filter(t=>!inLocked.has(t)));
   locked.forEach((p,i)=>{if(cand.length)pods[p].lock=cand[i%cand.length];});
-  G={lv,gm,pods,ns:NS,nb:NB,sets:0,total:S,time:300,maxTime:300,freeze:0,combo:0,lastClear:-1e9,
+  G={lv,gm,pods,ns:NS,nb:NB,sets:0,total:S,time:lv>=9?360:300,maxTime:lv>=9?360:300,freeze:0,combo:0,lastClear:-1e9,
      belt:belt?{cells:belt,off:0}:null,pbelt:gm.pod?{off:0}:null,
      boost:{shf:1,mag:1,frz:1},over:false,paused:true,started:false};
   buildCells(NS,NB);
