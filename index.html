@@ -55,7 +55,7 @@ html,body{height:100%;overflow:hidden;background:#0b0b26;font-family:'Zen Maru G
 @keyframes jelly{30%{transform:scale(1.05,.93)}60%{transform:scale(.98,1.03)}}
 .slot{flex:1;position:relative;border-radius:calc(var(--pw)*.13);background:radial-gradient(90% 70% at 50% 85%,rgba(185,196,255,.16),rgba(255,255,255,.02) 70%);box-shadow:inset 0 2px 6px rgba(5,0,25,.35)}
 .pc{position:absolute;inset:3% 0 2%;cursor:grab;touch-action:none}
-.pc svg{width:100%;height:100%;overflow:visible;display:block}
+.pc svg{width:100%;height:100%;overflow:visible;display:block;transform-origin:50% 100%;will-change:transform}
 .pcin{width:100%;height:100%;transform-origin:50% 100%;animation:poyo 1.8s ease-in-out infinite}
 @keyframes poyo{0%,100%{transform:scale(1,1)}25%{transform:scale(1.05,.95)}50%{transform:scale(.97,1.04)}75%{transform:scale(1.01,.99)}}
 .pc.ghost{opacity:.25}
@@ -490,9 +490,13 @@ function renderPod(p,opt={}){
     t+=`<div class="next" style="bottom:${(n-1)*13+16}%">`+P.layers[0].map(x=>`<div>${x==null?'':svg(x)}</div>`).join('')+'</div>';
     tray.innerHTML=t;
   }
-  for(const k of ['drop','rise'])(opt[k]||[]).forEach(s=>{
+  (opt.rise||[]).forEach(s=>{
     const el=pod.querySelector(`.slot[data-s="${s}"] .pc`);if(!el)return;
-    el.classList.add(k);el.addEventListener('animationend',()=>el.classList.remove(k),{once:true});
+    el.classList.add('rise');el.addEventListener('animationend',()=>{el.classList.remove('rise');jolt(el.querySelector('svg'),5);},{once:true});
+  });
+  (opt.drop||[]).forEach(s=>{
+    const el=pod.querySelector(`.slot[data-s="${s}"] .pc`);if(!el)return;
+    landing(el.querySelector('svg'),pod);
   });
 }
 /* ベルト（子が流れる） */
@@ -504,7 +508,7 @@ function buildBelt(){
 }
 function renderBeltCell(i,anim){
   const t=G.belt.cells[i];bcs[i].innerHTML=t==null?'':pieceHTML(t);
-  if(anim){const el=bcs[i].querySelector('.pc');if(el){el.classList.add(anim);el.addEventListener('animationend',()=>el.classList.remove(anim),{once:true});}}
+  if(anim){const el=bcs[i].querySelector('.pc');if(el)landing(el.querySelector('svg'),null);}
 }
 const loopX=(i,sp,n,off,lead)=>{const L=n*sp;return ((i*sp-off)%L+L)%L-lead;};
 function beltX(i){const cw=PW*.36;return loopX(i,cw,BC,G.belt.off,cw);}
@@ -571,20 +575,37 @@ function check(p){
   else if(P.slots.every(x=>x==null)&&P.layers.length)advance(p);
   else settle();
 }
+// 置いた子（ととなりの子）の揺れがおさまって元の大きさに戻るまで待つ
+function waitSettled(p,cb){
+  const t0=performance.now();
+  const tick=()=>{
+    const moving=[...cells[p].querySelectorAll('.pc svg')].some(el=>{const st=JS.get(el);return st&&(Math.abs(st.y)>.015||Math.abs(st.vy)>.25||Math.abs(st.k)>.6);});
+    if(moving&&performance.now()-t0<1200)requestAnimationFrame(tick);else setTimeout(cb,90);
+  };
+  requestAnimationFrame(tick);
+}
 function clearPod(p){
+  const P=G.pods[p];P.busy++;
+  setTimeout(()=>{P.busy--;clearPodNow(p);},230); // 着地のはずみ（つぶれて戻る）1回ぶんだけ待つ
+}
+function clearPodNow(p){
   const P=G.pods[p],t=P.slots[0];P.busy++;
-  cells[p].querySelectorAll('.pc').forEach((el,i)=>{el.style.setProperty('--mx',(1-i)*100+'%');el.classList.add('pop');});
+  cells[p].querySelectorAll('.pc').forEach(el=>{el.style.setProperty('--mx','0%');el.classList.add('pop');}); // 3匹その場で同時に消える
   const now=performance.now();G.combo=(now-G.lastClear<6000)?G.combo+1:1;G.lastClear=now;
   sfx.clear(G.combo);buzz(25);
+  // ふくらみきったところで、すぐキラキラと星を出す（消えきるのを待たない）
+  const pcs=[...cells[p].querySelectorAll('.pc')].map(el=>center(el));
   setTimeout(()=>{
-    const [x,y]=center(cells[p].querySelector('.pod'));
-    burst(x,y);flyStar(x,y);
+    pcs.forEach(([x,y])=>burst(x,y,6));
+    const [x,y]=center(cells[p].querySelector('.pod'));flyStar(x,y);
     cells[p].querySelector('.pod').classList.add('jelly2');setTimeout(()=>cells[p].querySelector('.pod').classList.remove('jelly2'),500);
+    if(G.combo>=2)showCombo(G.combo);
+  },140);
+  setTimeout(()=>{
     P.slots=[null,null,null];P.busy--;
     onSet(t);renderPod(p);
-    if(G.combo>=2)showCombo(G.combo);
     if(!checkWin())check(p);
-  },430);
+  },400);
 }
 function onSet(t){
   G.sets++;updHud();
@@ -651,6 +672,29 @@ function placeBelt(src,cx){
   return true;
 }
 
+/* ===================== ぷにぷに（ばねの動き） ===================== */
+// y：+でつぶれる（横に広がる）／−でのびる。k：横へのかたむき（度）。ty・tk は目標値（押している間など）
+const JS=new Map();
+function jel(el){if(!el)return null;let s=JS.get(el);if(!s){s={y:0,vy:0,ty:0,k:0,vk:0,tk:0};JS.set(el,s);}return s;}
+function jolt(el,vy,vk=0){const s=jel(el);if(s){s.vy+=vy;s.vk+=vk;}}
+function landing(sv,pod){ // 置いたとき：つぶれてぽよんぽよん。となりの子もつられて揺れる
+  const s=jel(sv);if(!s)return;s.y=.3;s.vy=4;s.ty=0;s.k=(Math.random()-.5)*6;
+  if(pod)pod.querySelectorAll('.pc svg').forEach(o=>{if(o!==sv)setTimeout(()=>jolt(o,3.2,(Math.random()-.5)*30),70);});
+}
+function jellyTick(dt,now){
+  const K=190,D=8,KK=150,DK=7.5,steps=2,h=dt/steps;
+  for(const [el,s] of JS){
+    if(!el.isConnected){JS.delete(el);continue;}
+    if(s.float&&now-(s.moveAt||0)>80){s.ty=0;s.tk=0;}
+    for(let i=0;i<steps;i++){
+      s.vy+=(-K*(s.y-s.ty)-D*s.vy)*h;s.y+=s.vy*h;
+      s.vk+=(-KK*(s.k-s.tk)-DK*s.vk)*h;s.k+=s.vk*h;
+    }
+    const y=Math.max(-.42,Math.min(.45,s.y));
+    el.style.transform=`scale(${(1+y*.75).toFixed(4)},${(1-y).toFixed(4)}) skewX(${s.k.toFixed(2)}deg)`;
+    if(!s.float&&s.ty===0&&s.tk===0&&Math.abs(s.y)<.003&&Math.abs(s.vy)<.02&&Math.abs(s.k)<.05&&Math.abs(s.vk)<.08){el.style.transform='';JS.delete(el);}
+  }
+}
 /* ===================== 操作 ===================== */
 let drag=null,sel=null;
 const fl=$('#float');
@@ -667,7 +711,9 @@ $('#board').addEventListener('pointerdown',e=>{
   let src=null;
   if(pc&&bc)src={b:+bc.dataset.b};
   else if(pc&&cell){const p=+cell.dataset.p,P=G.pods[p];if(P.lock==null&&!P.busy)src={p,s:+pc.parentNode.dataset.s};}
-  if(src){drag={src,t:srcGet(src),x0:e.clientX,y0:e.clientY,ox:0,oy:0,pc,moved:false};const r=pc.getBoundingClientRect();drag.r=r;e.preventDefault();return;}
+  if(src){drag={src,t:srcGet(src),x0:e.clientX,y0:e.clientY,ox:0,oy:0,pc,moved:false,lx:e.clientX,ly:e.clientY,lt:performance.now(),vx:0,vy:0};const r=pc.getBoundingClientRect();drag.r=r;
+    const sv=pc.querySelector('svg'),st=jel(sv);if(st){st.ty=.17;st.vy+=2.5;} // 押すとむにっ
+    e.preventDefault();return;}
   if(sel){
     let ok=false;
     if(cell)ok=place(sel,+cell.dataset.p,null,e.clientX);
@@ -684,16 +730,24 @@ addEventListener('pointermove',e=>{
     drag.r=drag.pc.getBoundingClientRect();drag.x0=e.clientX-dx;drag.y0=e.clientY-dy;
     fl.innerHTML=svg(drag.t);fl.style.width=drag.r.width+'px';fl.style.height=drag.r.height+'px';fl.style.display='block';
     drag.pc.classList.add('ghost');sfx.pick();
+    {const st=jel(drag.pc.querySelector('svg'));if(st)st.ty=0;}
+    const fs=fl.querySelector('svg');fs.style.transformOrigin='50% 35%';const f=jel(fs);f.y=-.32;f.vy=-1;f.float=true; // 持ち上げるとびよーん
   }
   if(drag.moved){
     fl.style.left=(drag.r.left+dx)+'px';fl.style.top=(drag.r.top+dy-14)+'px';
-    fl.style.transform=`scale(1.18) rotate(${Math.max(-14,Math.min(14,(e.movementX||0)*1.5))}deg)`;
+    fl.style.transform='scale(1.16)';
+    const now=performance.now(),dtm=Math.max(8,now-drag.lt);
+    const ivx=(e.clientX-drag.lx)/dtm*1000,ivy=(e.clientY-drag.ly)/dtm*1000;
+    drag.vx=drag.vx*.6+ivx*.4;drag.vy=drag.vy*.6+ivy*.4;drag.lx=e.clientX;drag.ly=e.clientY;drag.lt=now;
+    const f=jel(fl.querySelector('svg'));
+    if(f){const sp=Math.hypot(drag.vx,drag.vy);f.ty=-Math.min(.3,sp*.00028);f.tk=Math.max(-18,Math.min(18,-drag.vx*.013));f.moveAt=now;}
     hoverAt(document.elementFromPoint(e.clientX,e.clientY));
   }
 });
 addEventListener('pointerup',e=>{
   if(!drag)return;const d=drag;drag=null;
   if(!d.moved){
+    {const st=jel(d.pc.querySelector('svg'));if(st){st.ty=0;st.vy-=1.5;}} // はなすとぶるん
     if(sel&&sameSrc(sel,d.src)){clearSel();return;}
     if(sel&&d.src.b==null&&(sel.b!=null||d.src.p!==sel.p)&&G.pods[d.src.p].slots.includes(null)){if(!place(sel,d.src.p,null,e.clientX))sfx.no();clearSel();return;}
     setSel(d.src);return;
@@ -709,7 +763,7 @@ addEventListener('pointerup',e=>{
     sfx.no();
     const pc=srcEl(d.src),r=pc?pc.getBoundingClientRect():d.r;
     fl.style.transition='left .22s,top .22s,transform .22s';fl.style.left=r.left+'px';fl.style.top=r.top+'px';fl.style.transform='scale(1)';
-    setTimeout(()=>{fl.style.transition='';fl.style.display='none';fl.innerHTML='';const pc=srcEl(d.src);if(pc){pc.classList.remove('ghost');pc.classList.add('drop');pc.addEventListener('animationend',()=>pc.classList.remove('drop'),{once:true});}},230);
+    setTimeout(()=>{fl.style.transition='';fl.style.display='none';fl.innerHTML='';const pc=srcEl(d.src);if(pc){pc.classList.remove('ghost');landing(pc.querySelector('svg'),null);}},230);
   }
 });
 addEventListener('pointercancel',()=>{if(drag){const pc=srcEl(drag.src);pc&&pc.classList.remove('ghost');drag=null;fl.style.display='none';hoverAt(null);}});
@@ -763,7 +817,7 @@ $('#bFrz').onclick=()=>{
 /* ===================== 進行 ===================== */
 let last=performance.now();
 function loop(now){
-  const dt=Math.min(.1,(now-last)/1000);last=now;
+  const dt=Math.min(.1,(now-last)/1000);last=now;jellyTick(dt,now);
   if(G&&G.started&&!G.paused&&!G.over){
     if(G.freeze>0)G.freeze=Math.max(0,G.freeze-dt);else{G.time-=dt;updateTracks(dt);}
     if(G.time<=0){G.time=0;updHud();lose('time');}
