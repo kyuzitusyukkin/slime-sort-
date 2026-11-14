@@ -460,7 +460,7 @@ function newLevel(lv){
   const inLocked=new Set();locked.forEach(p=>{pods[p].slots.forEach(t=>t!=null&&inLocked.add(t));pods[p].layers.forEach(L=>L.forEach(t=>t!=null&&inLocked.add(t)));});
   const cand=shuffle(types.filter(t=>!inLocked.has(t)));
   locked.forEach((p,i)=>{if(cand.length)pods[p].lock=cand[i%cand.length];});
-  G={lv,gm,pods,ns:NS,nb:NB,sets:0,total:S,time:lv>=9?360:300,maxTime:lv>=9?360:300,freeze:0,combo:0,lastClear:-1e9,
+  G={lv,gm,pods,ns:NS,nb:NB,sets:0,total:S,time:lv>=9?420:300,maxTime:lv>=9?420:300,freeze:0,combo:0,lastClear:-1e9,
      belt:belt?{cells:belt,off:0}:null,pbelt:gm.pod?{off:0}:null,
      boost:{shf:1,mag:1,frz:1},over:false,paused:true,started:false};
   buildCells(NS,NB);
