@@ -26,8 +26,8 @@ html,body{height:100%;overflow:hidden;background:#0b0b26;font-family:'Zen Maru G
 @keyframes bump{40%{transform:scale(1.15,.9)}70%{transform:scale(.97,1.04)}}
 #pause{width:36px;height:36px;border-radius:50%;padding:0;justify-content:center;cursor:pointer}
 .jelly{background:linear-gradient(140deg,#ffd3f1 0%,#d6dbff 50%,#c4fbef 100%);color:#3a2d63;border:1.5px solid rgba(255,255,255,.7);box-shadow:inset 0 3px 6px rgba(255,255,255,.75),inset 0 -5px 10px rgba(80,60,160,.22),0 6px 14px rgba(20,10,60,.35)}
-#combo{position:absolute;right:16px;bottom:2px;font-weight:700;font-size:22px;opacity:0;z-index:3;pointer-events:none;color:#fff;text-shadow:0 0 8px rgba(255,184,234,.9),0 0 16px rgba(166,255,240,.5)}
-#combo b{font-size:36px;margin-left:2px;background:linear-gradient(140deg,#ffd3f1,#d6dbff 50%,#c4fbef);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 6px rgba(255,184,234,.8))}
+#combo{position:absolute;left:0;right:0;top:44%;text-align:center;transform-origin:50% 50%;font-weight:700;font-size:30px;opacity:0;z-index:30;pointer-events:none;color:#fff;text-shadow:0 0 8px rgba(255,184,234,.9),0 0 16px rgba(166,255,240,.5)}
+#combo b{font-size:52px;margin-left:2px;background:linear-gradient(140deg,#ffd3f1,#d6dbff 50%,#c4fbef);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 6px rgba(255,184,234,.8))}
 #combo.show{animation:combo 1.2s ease-out forwards}
 @keyframes combo{0%{opacity:0;transform:scale(.4)}15%{opacity:1;transform:scale(1.15,.9)}25%{transform:scale(.95,1.05)}35%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
 #board{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:4px 6px}
@@ -141,9 +141,9 @@ html,body{height:100%;overflow:hidden;background:#0b0b26;font-family:'Zen Maru G
       <div class="pill" id="help" style="width:36px;height:36px;border-radius:50%;padding:0;justify-content:center;cursor:pointer;font-size:17px">?</div>
       <div class="pill" id="pause"><svg width="14" height="14" viewBox="0 0 16 16"><rect x="3" y="2" width="3.4" height="12" rx="1.7" fill="#f3eeff"/><rect x="9.6" y="2" width="3.4" height="12" rx="1.7" fill="#f3eeff"/></svg></div>
     </div>
-    <div id="combo"></div>
   </div>
   <div id="board"><div id="grid"></div><div id="ptrack"><div class="band"></div><div class="pods"></div></div><div id="itrack"><div class="band"></div><div class="items"></div></div></div>
+  <div id="combo"></div>
   <div id="bar">
     <div class="bst jelly" id="bShf"><svg viewBox="0 0 40 40"><path d="M6 13h7c6 0 8 14 14 14h6M6 27h7c2.5 0 4-2.5 5.3-5M33 13h-6c-2.5 0-4 2.5-5.3 5" stroke="#3a2d63" stroke-width="3.2" fill="none" stroke-linecap="round"/><path d="M30 9l4 4-4 4M30 23l4 4-4 4" stroke="#3a2d63" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="n" id="nShf">1</span></div>
     <div class="bst jelly" id="bMag"><svg viewBox="0 0 40 40"><path d="M15 28l-5 9h20l-5-9z" fill="#a6fff0" opacity=".7"/><path d="M13 21a7 7 0 0 1 14 0" fill="none" stroke="#3a2d63" stroke-width="2.8"/><ellipse cx="20" cy="23" rx="15" ry="5.5" fill="none" stroke="#3a2d63" stroke-width="2.8"/><circle cx="12" cy="23.5" r="1.6" fill="#3a2d63"/><circle cx="20" cy="24.5" r="1.6" fill="#3a2d63"/><circle cx="28" cy="23.5" r="1.6" fill="#3a2d63"/></svg><span class="n" id="nMag">1</span></div>
