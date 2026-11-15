@@ -318,7 +318,7 @@ const PAT={
   cloud:`<g fill="#ffffff" opacity=".92"><path d="M22 100Q26 90 36 94Q40 84 52 89Q60 84 66 92Q76 88 80 96Q90 92 98 100V124H22Z"/><path d="M70 68Q72 62 78 64Q81 58 87 62Q93 61 94 68Z" opacity=".85"/><path d="M28 74Q30 69 35 71Q38 67 42 71Q46 71 46 75H28Z" opacity=".8"/></g>`,
   dots:(()=>{const dm=(x,y)=>`M${x} ${y-14}L${x+10} ${y}L${x} ${y+14}L${x-10} ${y}Z`;let d='';
     for(let j=0;j<3;j++)for(let i=-1;i<5;i++)d+=dm(20+20*i,82+28*j);
-    return `<path d="${d}" fill="#f5c23e" opacity=".5"/>`;})(),
+    return `<path d="${d}" fill="#ffffff" opacity=".85"/>`;})(),
   paw:`<g fill="#ffd3f1" opacity=".8">${paw(45,76,1.9,-8)}${paw(75,76,1.9,8)}</g>`,
   seed:`<g fill="#fff3f8" opacity=".85">${[[38,72,3.6],[60,70,3.2],[82,72,3.6],[48,86,3.8],[72,86,3.8],[34,98,3.2],[60,100,4],[86,98,3.2],[46,112,3.4],[74,112,3.4]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>`,
 };
