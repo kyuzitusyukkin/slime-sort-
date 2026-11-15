@@ -83,6 +83,22 @@ html,body{height:100%;overflow:hidden;background:#0b0b26;font-family:'Zen Maru G
 #float svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 8px 8px rgba(5,0,25,.45)) drop-shadow(0 0 6px rgba(255,184,234,.5))}
 .fly{position:fixed;pointer-events:none;z-index:55;transition:transform .55s cubic-bezier(.5,-0.3,.7,1),opacity .55s}
 .fly svg{width:100%;height:100%;overflow:visible}
+.sfly{position:fixed;left:0;top:0;pointer-events:none;z-index:55;will-change:transform}
+.sfly svg{width:100%;height:100%;overflow:visible}
+.swirl{position:fixed;width:150px;height:150px;margin:-75px 0 0 -75px;pointer-events:none;z-index:54;border-radius:50%;
+  background:conic-gradient(from 0deg,rgba(255,184,234,0),rgba(255,184,234,.5),rgba(205,212,255,.5),rgba(166,255,240,.5),rgba(255,184,234,0));
+  -webkit-mask:radial-gradient(circle,transparent 38%,#000 40%,#000 62%,transparent 66%);mask:radial-gradient(circle,transparent 38%,#000 40%,#000 62%,transparent 66%);
+  animation:swirl 1.1s ease-in-out forwards}
+@keyframes swirl{0%{transform:scale(.3) rotate(0);opacity:0}25%{opacity:1}75%{opacity:.9}100%{transform:scale(1.25) rotate(540deg);opacity:0}}
+.frostFx{position:fixed;inset:0;pointer-events:none;z-index:56;background:radial-gradient(circle at 50% 45%,rgba(230,252,255,.8),rgba(166,230,255,.3) 38%,rgba(166,230,255,0) 70%);animation:frostflash .75s ease-out forwards}
+@keyframes frostflash{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+.frostFlake{position:fixed;left:50%;top:45%;width:160px;height:160px;margin:-80px 0 0 -80px;pointer-events:none;z-index:57;filter:drop-shadow(0 0 12px rgba(166,255,240,.9));animation:flake 1.05s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes flake{0%{transform:scale(.2) rotate(-120deg);opacity:0}30%{opacity:1}68%{transform:scale(1.05) rotate(10deg);opacity:1}100%{transform:scale(1.4) rotate(25deg);opacity:0}}
+body.frozen::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:50;box-shadow:inset 0 0 70px 22px rgba(166,230,255,.38);animation:frostin .6s ease-out}
+@keyframes frostin{from{opacity:0}to{opacity:1}}
+body.frozen .tw,body.frozen #sky *{animation-play-state:paused!important}
+body.melt::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:50;box-shadow:inset 0 0 70px 22px rgba(166,230,255,.38);animation:frostout .8s ease-in forwards}
+@keyframes frostout{from{opacity:1}to{opacity:0}}
 .ufoBig{position:fixed;left:0;top:0;width:120px;height:88px;pointer-events:none;z-index:57;will-change:transform}
 .ufoBig .bob{width:100%;height:100%;animation:ufobob .5s ease-in-out infinite alternate}
 .ufoBig svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 10px rgba(166,255,240,.55))}
@@ -410,7 +426,9 @@ const sfx={
   rise(){tone(330,.12,'sine',.1,1.6);},
   lid(){bell(NOTE(7),.14,0,.6);bell(NOTE(12),.14,.08,.6);bell(NOTE(19),.12,.16,.7);shimmer(4,.05,.2);},
   no(){tone(220,.12,'triangle',.12,.75);},
-  shuffle(){for(let i=0;i<6;i++)bubble(.14,i*.05,.8+Math.random()*.8);},
+  shuffle(){for(let i=0;i<6;i++)bubble(.14,i*.05,.8+Math.random()*.8);tone(420,.55,'sine',.06,2.2,.05);},
+  shufLand(){[12,16,19].forEach((n,i)=>bell(NOTE(n),.07,i*.05,.45));for(let i=0;i<4;i++)bubble(.08,.02+i*.04,1.2+Math.random()*.6);},
+  melt(){[19,16,12].forEach((n,i)=>bell(NOTE(n),.06,i*.09,.6));tone(1100,.5,'sine',.04,.6);},
   ufo(){tone(260,.7,'sine',.14,3.2);tone(270,.7,'triangle',.05,3);voice('nyaQ',.55);},
   ufoIn(){tone(900,.45,'sine',.05,.55);tone(1350,.45,'sine',.03,.5);},
   ufoOut(){tone(500,.5,'sine',.05,2.4);tone(750,.5,'triangle',.025,2.2);},
@@ -548,6 +566,9 @@ function updHud(){
   $('#time').textContent=fmt(G.time);
   $('#sets').textContent=G.sets+'/'+G.total;
   $('#timep').classList.toggle('ice',G.freeze>0);
+  {const fz=G.freeze>0,was=document.body.classList.contains('frozen');
+   if(fz!==was){document.body.classList.toggle('frozen',fz);
+     if(!fz&&G.started&&!G.over){document.body.classList.add('melt');sfx.melt();setTimeout(()=>document.body.classList.remove('melt'),850);}}}
   $('#timep').classList.toggle('warn',G.time<20&&G.freeze<=0);
 }
 function updBoost(){
@@ -807,6 +828,7 @@ function shufPlan(){
 function doShuffle(){
   if(G.boost.shf<=0||anyBusy()){sfx.no();return false;}
   G.boost.shf--;updBoost();clearSel();
+  const before=[];G.pods.forEach((P,p)=>{if(P.lock!=null)return;P.slots.forEach((t,s)=>{if(t==null)return;const el=cells[p].querySelector(`.slot[data-s="${s}"] .pc`);if(el)before.push({t,r:el.getBoundingClientRect()});});});
   const plan=shufPlan();
   const pos=[],items=[];
   G.pods.forEach((P,p)=>{if(P.lock!=null)return;P.slots.forEach((t,s)=>{pos.push([p,s]);if(t!=null)items.push(t);});P.slots=[null,null,null];});
@@ -827,9 +849,34 @@ function doShuffle(){
   }else{
     items.forEach((t,i)=>{const[p,s]=pos[i];G.pods[p].slots[s]=t;});
   }
-  G.pods.forEach((P,p)=>{if(P.lock==null){P.busy++;renderPod(p,{rise:[0,1,2]});}});
+  // 演出：みんな真ん中へ吸い寄せられて、うずを巻いてから新しい場所へ飛んでいく
+  const ups=[];G.pods.forEach((P,p)=>{if(P.lock==null){P.busy++;renderPod(p);ups.push(p);}});
+  const after=[];ups.forEach(p=>G.pods[p].slots.forEach((t,s)=>{if(t==null)return;const el=cells[p].querySelector(`.slot[data-s="${s}"] .pc`);if(el){el.style.visibility='hidden';after.push({t,el,r:el.getBoundingClientRect()});}}));
+  const all=before.concat(after).map(o=>o.r);
+  const cx=all.length?(Math.min(...all.map(r=>r.left))+Math.max(...all.map(r=>r.right)))/2:innerWidth/2;
+  const cy=all.length?(Math.min(...all.map(r=>r.top))+Math.max(...all.map(r=>r.bottom)))/2:innerHeight/2;
+  const used=new Set(),moves=[];
+  after.forEach(a=>{const i=before.findIndex((b,j)=>!used.has(j)&&b.t===a.t);if(i>=0){used.add(i);moves.push({t:a.t,from:before[i].r,to:a.r});}else moves.push({t:a.t,from:null,to:a.r});});
+  before.forEach((b,j)=>{if(!used.has(j))moves.push({t:b.t,from:b.r,to:null});});
+  const D=1150,R=Math.min(80,innerWidth*.2),N=moves.length;
+  const sw=document.createElement('div');sw.className='swirl';sw.style.left=cx+'px';sw.style.top=cy+'px';document.body.appendChild(sw);setTimeout(()=>sw.remove(),1200);
+  const clones=[];
+  moves.forEach((m,i)=>{
+    const ref=m.from||m.to,w=ref.width,h=ref.height,th=i/N*Math.PI*2,th2=th+1.9;
+    const mx=cx+R*Math.cos(th)-w/2,my=cy+R*.75*Math.sin(th)-h/2,mx2=cx+R*Math.cos(th2)-w/2,my2=cy+R*.75*Math.sin(th2)-h/2;
+    const sx=m.from?m.from.left:cx-w/2,sy=m.from?m.from.top:cy-h/2,ex=m.to?m.to.left:cx-w/2,ey=m.to?m.to.top:cy-h/2;
+    const c=document.createElement('div');c.className='sfly';c.style.width=w+'px';c.style.height=h+'px';c.innerHTML=svg(m.t);document.body.appendChild(c);clones.push(c);
+    const T=(x,y,r,k,o=1)=>({transform:`translate(${x}px,${y}px) rotate(${r}deg) scale(${k})`,opacity:o});
+    c.animate([T(sx,sy,0,1,m.from?1:0),T(mx,my,140,.6),T(mx2,my2,260,.6),T(ex,ey,360,1,m.to?1:0)],{duration:D,delay:i*10,easing:'cubic-bezier(.45,0,.35,1)',fill:'forwards'});
+  });
   sfx.shuffle();
-  setTimeout(()=>{G.pods.forEach((P,p)=>{if(P.lock==null){P.busy--;}});G.pods.forEach((P,p)=>{if(P.lock==null)check(p);});},480);
+  setTimeout(()=>burst(cx,cy,14),D*.5);
+  setTimeout(()=>{
+    clones.forEach(c=>c.remove());
+    after.forEach(a=>{a.el.style.visibility='';jolt(a.el.querySelector('svg'),5,(Math.random()-.5)*24);});
+    sfx.shufLand();
+    ups.forEach(p=>G.pods[p].busy--);ups.forEach(p=>check(p));
+  },D+N*10+20);
   return true;
 }
 $('#bMag').onclick=()=>{
@@ -884,6 +931,12 @@ $('#bFrz').onclick=()=>{
   if(!G||G.over||G.paused)return;audioInit();
   if(G.boost.frz<=0){sfx.no();return;}
   G.boost.frz--;G.freeze+=15;updBoost();updHud();sfx.freeze();
+  // 演出：白く光って、大きな雪の結晶がくるっと出る。止まっている間は画面のふちが凍る
+  const fx=document.createElement('div');fx.className='frostFx';document.body.appendChild(fx);setTimeout(()=>fx.remove(),800);
+  const fl=document.createElement('div');fl.className='frostFlake';
+  fl.innerHTML='<svg viewBox="-50 -50 100 100" width="100%" height="100%"><g stroke="#fff" stroke-width="4.5" stroke-linecap="round" fill="none">'+[0,60,120].map(a=>`<g transform="rotate(${a})"><path d="M0 -42V42M-10 -32L0 -24L10 -32M-10 32L0 24L10 32M-7 -14L0 -9L7 -14M-7 14L0 9L7 14"/></g>`).join('')+'</g><circle r="6" fill="#a6fff0"/></svg>';
+  document.body.appendChild(fl);setTimeout(()=>fl.remove(),1100);
+  burst(innerWidth/2,innerHeight*.45,16);
 };
 
 /* ===================== 進行 ===================== */
