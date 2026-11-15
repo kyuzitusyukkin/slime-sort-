@@ -212,7 +212,7 @@ body.melt::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:5
     <button class="btn sub" id="btnRetry1">さいしょから</button>
   </div></div>
   <div class="ov" id="ovWin"><div class="box">
-    <h2>クリア！</h2>
+    <h2 id="winTitle">クリア！</h2>
     <div class="stars" id="winStars"></div>
     <p id="winMsg"></p>
     <button class="btn jelly" id="btnNext">つぎのレベルへ</button>
@@ -1003,6 +1003,7 @@ function win(){
   bgmStop();
   const r=G.time/G.maxTime,n=r>=.5?3:r>=.25?2:1;
   $('#winStars').innerHTML=[0,1,2].map(i=>`<span style="opacity:${i<n?1:.25};filter:drop-shadow(0 0 8px #ffb8ea)">${SPK(i<n?'#fff3c4':'#ffffff')}</span>`).join('');
+  $('#winTitle').textContent=`Lv.${LV} クリア！`;
   $('#winMsg').textContent=`のこり ${fmt(G.time)}`;
   STARS[LV]=Math.max(STARS[LV]||0,n);MAXLV=Math.max(MAXLV,LV+1);
   try{localStorage.setItem('slimeSortLv',String(LV+1));localStorage.setItem('slimeSortMax',String(MAXLV));localStorage.setItem('slimeSortStars',JSON.stringify(STARS));}catch(e){}
