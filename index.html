@@ -294,7 +294,7 @@ const sparkle=(x,y,s,fill='#fff',o=1)=>`<path d="M${x} ${y-s}Q${x+s*.18} ${y-s*.
 
 function cat(i,o){
   const f=o.fill||rgd('cg'+i,o.c0,o.c1);
-  let s=`<g opacity=".95"><path d="${EARL}" fill="${f}" stroke="url(#rim)" stroke-width="0.45" stroke-linejoin="round"/><path d="${EARR}" fill="${f}" stroke="url(#rim)" stroke-width="0.45" stroke-linejoin="round"/>
+  let s=`<g opacity=".95"><path d="${EARL}" fill="${o.ear||f}" stroke="url(#rim)" stroke-width="0.45" stroke-linejoin="round"/><path d="${EARR}" fill="${o.ear||f}" stroke="url(#rim)" stroke-width="0.45" stroke-linejoin="round"/>
   <path d="${CAP}" fill="${f}" stroke="url(#rim)" stroke-width="0.45"/></g>`;
   s+=`<g clip-path="url(#capc)"><path d="${CAP}" fill="url(#holo)" opacity="${o.dark?.1:.16}"/>${o.extra||''}<ellipse cx="60" cy="112" rx="26" ry="9" fill="#fff" opacity=".16"/></g>`;
   s+=`${gl(42,44,10,6)}<circle cx="33" cy="58" r="2.2" fill="#fff" opacity=".6"/><path d="M30 95Q33 108 48 112" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".38"/>`;
@@ -302,20 +302,40 @@ function cat(i,o){
   s+=`<path d="M57.8 58L62.2 58L60 61Z" fill="#ff9cc8"/>`;
   return s;
 }
+
+// 猫の柄（2026-11-15〜）
+const st5=(x,y,r)=>{let d='';for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,rr=k%2?r*.45:r;d+=(k?'L':'M')+(x+rr*Math.cos(a)).toFixed(1)+' '+(y+rr*Math.sin(a)).toFixed(1);}return d+'Z';};
+const hrt=(x,y,k)=>`<path transform="translate(${x} ${y}) scale(${k})" d="M0 5C-7 -0.5 -5 -6.5 0 -2.8C5 -6.5 7 -0.5 0 5Z"/>`;
+const sak=(x,y,k,r=0)=>`<g transform="translate(${x} ${y}) rotate(${r}) scale(${k})">${[0,72,144,216,288].map(a=>`<ellipse rx="1.9" ry="3" cy="-3" transform="rotate(${a})"/>`).join('')}<circle r="1.1" fill="#ffc2e0"/></g>`;
+const paw=(x,y,k,r=0)=>`<g transform="translate(${x} ${y}) rotate(${r}) scale(${k})"><ellipse cx="0" cy="2" rx="3.4" ry="2.8"/><circle cx="-3.6" cy="-2.4" r="1.4"/><circle cx="-1.2" cy="-4.2" r="1.4"/><circle cx="1.2" cy="-4.2" r="1.4"/><circle cx="3.6" cy="-2.4" r="1.4"/></g>`;
+const PAT={
+  hachi:`<path d="M18 14H102V60Q90 63 80 54Q70 44 60 31Q50 44 40 54Q30 63 18 60Z" fill="#a9a9bf"/>`,
+  tora:`<g stroke="#ee8456" stroke-linecap="round" fill="none" opacity=".62"><path d="M54 25V35M60 24V37M66 25V35" stroke-width="2.6"/>
+    <path d="M25 68Q34 70 39 66M25 82Q35 85 41 80M26 96Q34 99 39 94" stroke-width="3.4"/><path d="M95 68Q86 70 81 66M95 82Q85 85 79 80M94 96Q86 99 81 94" stroke-width="3.4"/></g>`,
+  gold:`<g fill="#ffd45e" stroke="#fff4c4" stroke-width=".6"><path d="${st5(40,74,5)}"/><path d="${st5(79,68,4)}"/><path d="${st5(58,96,5.4)}"/><path d="${st5(82,100,3.6)}"/><path d="${st5(36,104,3.4)}"/><path d="${st5(68,113,3)}"/></g><g fill="#ffe89a"><circle cx="70" cy="82" r="1.2"/><circle cx="46" cy="88" r="1"/><circle cx="88" cy="86" r=".9"/></g>`,
+  sakura:`<g fill="#fff6fb" opacity=".95">${sak(40,74,1.15,10)}${sak(78,70,.95,40)}${sak(58,98,1.25,-20)}${sak(84,102,.85,5)}${sak(38,104,.8,30)}<ellipse cx="66" cy="86" rx="1.6" ry="2.6" transform="rotate(35 66 86)"/><ellipse cx="72" cy="112" rx="1.5" ry="2.4" transform="rotate(-30 72 112)"/></g>`,
+  heart:`<g fill="#ffffff" opacity=".9">${hrt(40,74,1.15)}${hrt(78,70,.95)}${hrt(58,98,1.3)}${hrt(84,102,.85)}${hrt(37,104,.8)}${hrt(70,114,.7)}</g>`,
+  cloud:`<g fill="#ffffff" opacity=".92"><path d="M22 100Q26 90 36 94Q40 84 52 89Q60 84 66 92Q76 88 80 96Q90 92 98 100V124H22Z"/><path d="M70 68Q72 62 78 64Q81 58 87 62Q93 61 94 68Z" opacity=".85"/><path d="M28 74Q30 69 35 71Q38 67 42 71Q46 71 46 75H28Z" opacity=".8"/></g>`,
+  dots:(()=>{const dm=(x,y)=>`M${x} ${y-14}L${x+10} ${y}L${x} ${y+14}L${x-10} ${y}Z`;let d='';
+    for(let j=0;j<3;j++)for(let i=-1;i<5;i++)d+=dm(20+20*i,82+28*j);
+    return `<path d="${d}" fill="#f5c23e" opacity=".5"/>`;})(),
+  paw:`<g fill="#ffd3f1" opacity=".8">${paw(45,76,1.9,-8)}${paw(75,76,1.9,8)}</g>`,
+  seed:`<g fill="#fff3f8" opacity=".85">${[[38,72,3.6],[60,70,3.2],[82,72,3.6],[48,86,3.8],[72,86,3.8],[34,98,3.2],[60,100,4],[86,98,3.2],[46,112,3.4],[74,112,3.4]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>`,
+};
 const starDots=`<g fill="#fff">${sparkle(42,78,3.4)}${sparkle(76,96,2.6)}<circle cx="78" cy="62" r="1"/><circle cx="40" cy="100" r="1.2"/><circle cx="62" cy="108" r=".9"/><circle cx="84" cy="80" r=".8"/></g>`;
 const CATS=[
   {name:'くろねこ',c0:'#3a2f5e',c1:'#0e0a1e',eye:'#7ff5d0',dark:1},
-  {name:'しろねこ',c0:'#ffffff',c1:'#d4d8f4',eye:'#7f96ff'},
-  {name:'さくら',c0:'#ffe6f4',c1:'#ffa6d4',eye:'#6a4bb8'},
-  {name:'ラベンダー',c0:'#f1e8ff',c1:'#b39bff',eye:'#4b3a8c'},
-  {name:'ミント',c0:'#e8fff7',c1:'#7fe3c4',eye:'#3e64a8'},
-  {name:'そらいろ',c0:'#d9f4ff',c1:'#56bdf0',eye:'#3b3a8c'},
-  {name:'ピーチ',c0:'#fff1e8',c1:'#ffb596',eye:'#7a4aa0'},
-  {name:'レモン',c0:'#fffbe2',c1:'#ffe07a',eye:'#8a5ad0'},
+  {name:'しろねこ',c0:'#ffffff',c1:'#d4d8f4',eye:'#7f96ff',extra:PAT.hachi,ear:'#a9a9bf'},
+  {name:'さくら',c0:'#ffe6f4',c1:'#ffa6d4',eye:'#6a4bb8',extra:PAT.sakura},
+  {name:'ラベンダー',c0:'#f1e8ff',c1:'#b39bff',eye:'#4b3a8c',extra:PAT.gold},
+  {name:'ミント',c0:'#e8fff7',c1:'#7fe3c4',eye:'#3e64a8',extra:PAT.heart},
+  {name:'そらいろ',c0:'#d9f4ff',c1:'#56bdf0',eye:'#3b3a8c',extra:PAT.cloud},
+  {name:'ピーチ',c0:'#fff1e8',c1:'#ffb596',eye:'#7a4aa0',extra:PAT.tora,ear:'#f6a07a'},
+  {name:'レモン',c0:'#fffbe2',c1:'#ffe07a',eye:'#8a5ad0',extra:PAT.dots},
   {name:'ほしぞら',c0:'#5361d6',c1:'#1c2266',eye:'#ffe9a0',dark:1,extra:starDots},
   {name:'オーロラ',fill:'url(#aur)',eye:'#5b3fb8'},
-  {name:'ぶどう',c0:'#a27cf0',c1:'#4a2a9a',eye:'#ffd3f1',dark:1},
-  {name:'いちご',c0:'#ff9fcf',c1:'#e0468f',eye:'#fff3c4',dark:1},
+  {name:'ぶどう',c0:'#a27cf0',c1:'#4a2a9a',eye:'#ffd3f1',dark:1,extra:PAT.paw},
+  {name:'いちご',c0:'#ff9fcf',c1:'#e0468f',eye:'#fff3c4',dark:1,extra:PAT.seed},
 ];
 
 /* 宇宙モチーフ（ガラス・ホログラムの質感） */
