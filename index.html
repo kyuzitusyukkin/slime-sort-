@@ -190,7 +190,10 @@ html,body{height:100%;overflow:hidden;background:#0b0b26;font-family:'Zen Maru G
   <div class="ov" id="ovLose"><div class="box">
     <h2 id="loseTitle">じかんぎれ…</h2>
     <p id="loseMsg"></p>
-    <button class="btn jelly" id="btnShfRescue" style="display:none">シャッフルでたすける</button>
+    <button class="btn jelly" id="btnUfoRescue" style="display:none">UFOでたすける</button>
+    <button class="btn jelly" id="btnExtend" style="display:none">1分のばす</button>
+    <p id="aidNote" style="display:none;font-size:12px;opacity:.7;margin:-4px 0 10px">↑ 1ステージに1回つかえるよ</p>
+    <button class="btn sub" id="btnShfRescue" style="display:none">シャッフルでたすける</button>
     <button class="btn jelly" id="btnRetry3">もういちど</button>
   </div></div>
   <div class="ov" id="ovLv"><div class="box lvbox">
@@ -214,13 +217,15 @@ html,body{height:100%;overflow:hidden;background:#0b0b26;font-family:'Zen Maru G
       <p><b>台ごと流れる</b>　いちばん下の台が、右から左へ流れていくよ。流れている台にも入れたり出したりできるよ。</p>
       <p><b>子が流れる</b>　下のベルトに、ねこや星が流れてくるよ。取って台に入れられるし、ベルトのすきまに置いておくこともできるよ。</p>
       <h3>たすけボタン（各1回）</h3>
-      <div class="hrow"><span class="bst jelly hic" id="hi1"></span><p><b>シャッフル</b>　台の上の子をまぜかえすよ。</p></div>
+      <div class="hrow"><span class="bst jelly hic" id="hi1"></span><p><b>シャッフル</b>　台の上の子をまぜかえすよ。かならず1組は3つそろうよ。</p></div>
       <div class="hrow"><span class="bst jelly hic" id="hi2"></span><p><b>UFO</b>　いちばん多く見えている子を3つ吸いあげて、1セット消してくれるよ。</p></div>
       <div class="hrow"><span class="bst jelly hic" id="hi3"></span><p><b>時間をとめる</b>　15秒のあいだ、時間とベルトが止まるよ。</p></div>
       <h3>ステージをえらぶ</h3>
       <p>上の「Lv.」をおすと、これまでに進んだステージの中から、遊びたいステージをえらべるよ。</p>
       <h3>つまっちゃったら</h3>
-      <p>あいている場所がなくなると動かせなくなるよ。シャッフルが残っていれば、それでたすけられるよ。</p>
+      <p>あいている場所がなくなると動かせなくなるよ。「UFOでたすける」で1セット消して、続きから遊べるよ（1ステージに1回）。</p>
+      <h3>じかんぎれになったら</h3>
+      <p>「1分のばす」で、のこり1分から続けられるよ（1ステージに1回）。</p>
       <h3>クレジット</h3>
       <p>ゲーム：©otoyogames<br><span style="font-size:12px;opacity:.75">ゲームの絵・プログラムの無断転載・再配布はご遠慮ください</span></p>
       <p>BGM：BGMer　<a href="https://bgmer.net" target="_blank" rel="noopener" style="color:#a6fff0">https://bgmer.net</a></p>
@@ -467,7 +472,7 @@ function newLevel(lv){
   const TL=Math.max(300,Math.ceil(S*12/30)*30);
   G={lv,gm,pods,ns:NS,nb:NB,sets:0,total:S,time:TL,maxTime:TL,freeze:0,combo:0,lastClear:-1e9,
      belt:belt?{cells:belt,off:0}:null,pbelt:gm.pod?{off:0}:null,
-     boost:{shf:1,mag:1,frz:1},over:false,paused:true,started:false};
+     boost:{shf:1,mag:1,frz:1},aid:{ufo:1,ext:1},over:false,paused:true,started:false};
   buildCells(NS,NB);
   ptrack.classList.toggle('on',gm.pod);itrack.classList.toggle('on',gm.item);
   layout();
@@ -772,12 +777,46 @@ addEventListener('pointercancel',()=>{if(drag){const pc=srcEl(drag.src);pc&&pc.c
 
 /* ===================== ブースター ===================== */
 $('#bShf').onclick=()=>{if(!G||G.over||G.paused)return;audioInit();doShuffle();};
+// シャッフル：1組は必ず3つそろうようにする
+function shufPlan(){
+  // ふたのない台の見えている子を数える。3つ以上の子がいればそれ、いなければ2つの子＋下の段（またはベルト）から1つ連れてくる
+  const cnt={};G.pods.forEach(P=>{if(P.lock==null)P.slots.forEach(t=>{if(t!=null)cnt[t]=(cnt[t]||0)+1;});});
+  let best=null,bc=0;for(const k in cnt)if(cnt[k]>bc){bc=cnt[k];best=+k;}
+  if(best==null)return null;
+  if(bc>=3)return {t:best};
+  // 2つ以下：足りない分を下の段かベルトから探す
+  const order=Object.keys(cnt).map(Number).sort((a,b)=>cnt[b]-cnt[a]);
+  for(const t of order){
+    const need=3-cnt[t],src=[];
+    G.pods.forEach((P,p)=>{if(P.lock!=null)return;P.layers.forEach((L,li)=>L.forEach((x,s)=>{if(x===t)src.push({k:'L',p,li,s});}));});
+    if(G.belt)G.belt.cells.forEach((x,i)=>{if(x===t)src.push({k:'B',i});});
+    if(src.length>=need)return {t,src:src.slice(0,need)};
+  }
+  return null;
+}
 function doShuffle(){
   if(G.boost.shf<=0||anyBusy()){sfx.no();return false;}
   G.boost.shf--;updBoost();clearSel();
+  const plan=shufPlan();
   const pos=[],items=[];
   G.pods.forEach((P,p)=>{if(P.lock!=null)return;P.slots.forEach((t,s)=>{pos.push([p,s]);if(t!=null)items.push(t);});P.slots=[null,null,null];});
-  shuffle(pos);items.forEach((t,i)=>{const[p,s]=pos[i];G.pods[p].slots[s]=t;});
+  if(plan&&plan.src){
+    // 連れてくる子のかわりに、見えている別の子を下の段・ベルトへ入れかえる
+    plan.src.forEach(o=>{const j=items.findIndex(x=>x!==plan.t);if(j<0)return;const out=items[j];items[j]=plan.t;
+      if(o.k==='L')G.pods[o.p].layers[o.li][o.s]=out;else{G.belt.cells[o.i]=out;renderBeltCell(o.i);}});
+  }
+  shuffle(pos);
+  let plan2=plan&&items.filter(x=>x===plan.t).length>=3?plan:null;
+  if(plan2){
+    // 3つそろえる台を1つ決めて、先にそこへ入れる
+    const tp=pos[0][0],first=[0,1,2].map(s=>[tp,s]);
+    const rest=pos.filter(([p])=>p!==tp);
+    const tri=[];for(let k=0;k<3;k++){const j=items.indexOf(plan.t);tri.push(items.splice(j,1)[0]);}
+    first.forEach(([p,s],i)=>{G.pods[p].slots[s]=tri[i];});
+    shuffle(rest);items.forEach((t,i)=>{const[p,s]=rest[i];G.pods[p].slots[s]=t;});
+  }else{
+    items.forEach((t,i)=>{const[p,s]=pos[i];G.pods[p].slots[s]=t;});
+  }
   G.pods.forEach((P,p)=>{if(P.lock==null){P.busy++;renderPod(p,{rise:[0,1,2]});}});
   sfx.shuffle();
   setTimeout(()=>{G.pods.forEach((P,p)=>{if(P.lock==null){P.busy--;}});G.pods.forEach((P,p)=>{if(P.lock==null)check(p);});},480);
@@ -786,10 +825,14 @@ function doShuffle(){
 $('#bMag').onclick=()=>{
   if(!G||G.over||G.paused)return;audioInit();
   if(G.boost.mag<=0||anyBusy()){sfx.no();return;}
+  doUfo(true);
+};
+// UFO：いちばん多く見えている子を3つ吸い上げて1セット消す（useBoost=false は「詰まった」ときのたすけ用）
+function doUfo(useBoost){
   const cnt={};G.pods.forEach(P=>{if(P.lock==null)P.slots.forEach(t=>{if(t!=null)cnt[t]=(cnt[t]||0)+1;});});if(G.belt)G.belt.cells.forEach(t=>{if(t!=null)cnt[t]=(cnt[t]||0)+1;});
   let best=null,bc=0;for(const k in cnt)if(cnt[k]>bc){bc=cnt[k];best=+k;}
-  if(best==null){sfx.no();return;}
-  G.boost.mag--;updBoost();clearSel();
+  if(best==null){sfx.no();return false;}
+  if(useBoost){G.boost.mag--;updBoost();}clearSel();
   let need=3;const touched=new Set(),flying=[];
   G.pods.forEach((P,p)=>{if(P.lock!=null)return;P.slots.forEach((t,s)=>{if(need>0&&t===best){const el=cells[p].querySelector(`.slot[data-s="${s}"] .pc`);if(el)flying.push(el.getBoundingClientRect());P.slots[s]=null;need--;touched.add(p);}});});
   if(G.belt)G.belt.cells.forEach((t,i)=>{if(need>0&&t===best){const el=bcs[i].querySelector('.pc');if(el)flying.push(el.getBoundingClientRect());G.belt.cells[i]=null;renderBeltCell(i);need--;}});
@@ -809,7 +852,8 @@ $('#bMag').onclick=()=>{
     onSet(best);
     if(!checkWin())touched.forEach(p=>{renderPod(p);check(p);});
   },600);
-};
+  return true;
+}
 $('#bFrz').onclick=()=>{
   if(!G||G.over||G.paused)return;audioInit();
   if(G.boost.frz<=0){sfx.no();return;}
@@ -852,10 +896,17 @@ function lose(why){
   if(G.over)return;
   if(why==='stuck'){
     $('#loseTitle').textContent='つまっちゃった…';$('#loseMsg').textContent='あいている場所がなくなったよ';
-    $('#btnShfRescue').style.display=G.boost.shf>0?'block':'none';
+    // あとで猫アプリに入れるとき、UFOでたすける・1分のばすは動画広告（リワード広告）を見たら使えるようにする
+    $('#btnUfoRescue').style.display=G.aid.ufo>0?'block':'none';
+    $('#btnExtend').style.display='none';
+    $('#btnShfRescue').style.display=(G.boost.shf>0&&shufPlan())?'block':'none';
+    $('#aidNote').style.display=G.aid.ufo>0?'block':'none';
     G.paused=true;
   }else{
-    G.over=true;$('#loseTitle').textContent='じかんぎれ…';$('#loseMsg').textContent=`${G.sets}/${G.total} セット けせたよ`;$('#btnShfRescue').style.display='none';
+    G.over=true;$('#loseTitle').textContent='じかんぎれ…';$('#loseMsg').textContent=`${G.sets}/${G.total} セット けせたよ`;
+    $('#btnUfoRescue').style.display='none';$('#btnShfRescue').style.display='none';
+    $('#btnExtend').style.display=G.aid.ext>0?'block':'none';
+    $('#aidNote').style.display=G.aid.ext>0?'block':'none';
   }
   bgmStop();sfx.lose();
   show('ovLose');
@@ -906,6 +957,8 @@ $('#btnResume').onclick=()=>{G.paused=false;show(null);bgmPlay();};
 $('#btnRetry1').onclick=$('#btnRetry2').onclick=$('#btnRetry3').onclick=()=>openStart();
 $('#btnNext').onclick=()=>{LV++;openStart();};
 $('#btnShfRescue').onclick=()=>{G.paused=false;show(null);bgmPlay();doShuffle();};
+$('#btnUfoRescue').onclick=()=>{G.aid.ufo--;G.paused=false;show(null);bgmPlay();doUfo(false);};
+$('#btnExtend').onclick=()=>{G.aid.ext--;G.over=false;G.time=60;G.paused=false;updHud();show(null);bgmPlay();};
 
 openStart();setTimeout(layout,300);
 })();
