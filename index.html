@@ -309,7 +309,7 @@ function cat(i,o){
 const st5=(x,y,r)=>{let d='';for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,rr=k%2?r*.4:r;d+=(k?'L':'M')+(x+rr*Math.cos(a)).toFixed(1)+' '+(y+rr*Math.sin(a)).toFixed(1);}return d+'Z';};
 const hrt=(x,y,k)=>`<path transform="translate(${x} ${y}) scale(${k})" d="M0 5C-7 -0.5 -5 -6.5 0 -2.8C5 -6.5 7 -0.5 0 5Z"/>`;
 const sak=(x,y,k,r=0)=>`<g transform="translate(${x} ${y}) rotate(${r}) scale(${k})">${[0,72,144,216,288].map(a=>`<ellipse rx="1.9" ry="3" cy="-3" transform="rotate(${a})"/>`).join('')}<circle r="1.1" fill="#ffc2e0"/></g>`;
-const paw=(x,y,k,r=0)=>`<g transform="translate(${x} ${y}) rotate(${r}) scale(${k})"><ellipse cx="0" cy="2" rx="3.4" ry="2.8"/><circle cx="-3.6" cy="-2.4" r="1.4"/><circle cx="-1.2" cy="-4.2" r="1.4"/><circle cx="1.2" cy="-4.2" r="1.4"/><circle cx="3.6" cy="-2.4" r="1.4"/></g>`;
+const paw=(x,y,k,r=0)=>`<g transform="translate(${x} ${y}) rotate(${r}) scale(${k})"><ellipse cx="0" cy="2" rx="3.4" ry="2.8"/><circle cx="-3.1" cy="-2.7" r="1.55"/><circle cx="0" cy="-4.3" r="1.55"/><circle cx="3.1" cy="-2.7" r="1.55"/></g>`;
 const PAT={
   hachi:`<path d="M18 14H102V60Q90 63 80 54Q70 44 60 31Q50 44 40 54Q30 63 18 60Z" fill="#a9a9bf" opacity=".6"/>`,
   tora:`<g stroke="#ee8456" stroke-linecap="round" fill="none" opacity=".5"><path d="M54 25V35M60 24V37M66 25V35" stroke-width="2.6"/>
