@@ -99,6 +99,15 @@ body.frozen::after{content:'';position:fixed;inset:0;pointer-events:none;z-index
 body.frozen .tw,body.frozen #sky *{animation-play-state:paused!important}
 body.melt::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:50;box-shadow:inset 0 0 70px 22px rgba(166,230,255,.38);animation:frostout .8s ease-in forwards}
 @keyframes frostout{from{opacity:1}to{opacity:0}}
+.tipRing{position:fixed;pointer-events:none;z-index:66;border-radius:22px;border:2.5px solid #a6fff0;box-shadow:0 0 0 4000px rgba(8,5,30,.45),0 0 18px rgba(166,255,240,.8);animation:tipPulse 1.2s ease-in-out infinite}
+.tipRing.nodim{box-shadow:0 0 18px rgba(166,255,240,.8)}
+@keyframes tipPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.tipBox{position:fixed;left:20px;right:20px;z-index:67;padding:14px 16px 12px;border-radius:20px;background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,.08));border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#f3eeff;font-size:14px;line-height:1.6;font-weight:700;text-align:center;box-shadow:0 8px 30px rgba(10,5,40,.5);animation:tipIn .3s ease-out}
+.tipBox .btn{margin:10px auto 0;width:auto;padding:8px 26px;font-size:15px}
+@keyframes tipIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.tipGhost{position:fixed;left:0;top:0;pointer-events:none;z-index:66;opacity:0}
+.tipGhost svg{width:100%;height:100%;overflow:visible}
+.tipFinger{position:absolute;right:-10px;bottom:-14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 0 0 6px rgba(255,255,255,.3),0 0 14px rgba(166,255,240,.9)}
 .ufoBig{position:fixed;left:0;top:0;width:120px;height:88px;pointer-events:none;z-index:57;will-change:transform}
 .ufoBig .bob{width:100%;height:100%;animation:ufobob .5s ease-in-out infinite alternate}
 .ufoBig svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 10px rgba(166,255,240,.55))}
@@ -115,6 +124,9 @@ body.melt::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:5
 .bst{width:58px;height:58px;border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .45s cubic-bezier(.25,1.9,.5,1)}
 .bst:active{transform:scale(1.12,.86);transition:transform .07s}
 .bst svg{width:56%;height:56%}
+.bst.locked{opacity:.28;filter:grayscale(.6)}
+.bst.locked .n{display:none}
+.bst.locked::after{content:'';position:absolute;inset:0;margin:auto;width:20px;height:20px;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='4' y='9' width='12' height='9' rx='2.5' fill='%23ffffff'/%3E%3Cpath d='M6.5 9V7a3.5 3.5 0 0 1 7 0v2' stroke='%23ffffff' stroke-width='2' fill='none'/%3E%3C/svg%3E")}
 .bst .n{position:absolute;right:-4px;bottom:-3px;background:linear-gradient(140deg,#ffb8ea,#ff9cc8);color:#fff;border-radius:50%;min-width:22px;height:22px;font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:700;border:1.5px solid #fff;box-shadow:0 2px 6px rgba(5,0,25,.35)}
 .bst.off{filter:grayscale(.7) brightness(.6)}
 .ov{position:absolute;inset:0;background:rgba(8,5,30,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:70}
@@ -484,8 +496,10 @@ let cells=[];
 const BC=14; // ベルトのマス数（ループ）
 // ギミック：Lv3〜 台ごと流れる（奇数Lv）／Lv4〜 子が流れる（偶数Lv）／Lv8から3レベルごとに両方
 function gimmicks(lv){
-  const both=lv>=8&&lv%3===2;
-  return {pod:lv>=3&&(lv%2===1||both), item:lv>=4&&(lv%2===0||both)};
+  // Lv1〜8はチュートリアル（1レベルに1つずつ覚える）。Lv7で台ごと流れる、Lv8で子が流れるを初めて出す
+  if(lv<=8)return {pod:lv===7,item:lv===8};
+  const both=lv>=11&&(lv-11)%3===0;
+  return {pod:lv%2===1||both, item:lv%2===0||both};
 }
 function buildCells(ns,nb){
   grid.innerHTML='';ptrack.querySelector('.pods').innerHTML='';cells=[];
@@ -498,7 +512,12 @@ function buildCells(ns,nb){
 function newLevel(lv){
   const gm=gimmicks(lv);
   const NS=gm.pod?9:12, NB=gm.pod?5:0, NP=NS+NB;
-  const T=Math.min(NT,8+2*(lv-1)), S=Math.min(45,14+3*(lv-1)), L=lv<2?0:Math.min(3,Math.floor(lv/2));
+  // チュートリアル：1 基本／2 お皿の段／3 シャッフル／4 UFO／5 時間を止める／6 ふた／7 台ごと流れるベルト／8 子が流れるベルト
+  // Lv9からは今までのLv3と同じむずかしさから始まる
+  const TUT={1:{T:4,S:4,L:0,use:6},2:{T:5,S:8,L:0,use:6},3:{T:5,S:9,L:0,use:6},4:{T:6,S:11,L:0,use:9},
+    5:{T:6,S:13,L:0,use:9},6:{T:7,S:15,L:1,use:9},7:{T:8,S:17,L:1,use:0},8:{T:8,S:20,L:1,use:0}}[lv];
+  const e=lv-6;
+  const T=TUT?TUT.T:Math.min(NT,8+2*(e-1)), S=TUT?TUT.S:Math.min(45,14+3*(e-1)), L=TUT?TUT.L:Math.min(3,Math.floor(e/2));
   const types=shuffle([...Array(NT).keys()]).slice(0,T);
   const items=[];for(let i=0;i<S;i++){const t=types[i%T];items.push(t,t,t);}shuffle(items);
   // ベルトに乗せる子
@@ -509,8 +528,8 @@ function newLevel(lv){
     const pos=shuffle([...Array(BC).keys()]).slice(0,nb);
     pos.forEach(i=>belt[i]=items.pop());
   }
-  const all=[...Array(NP).keys()];
-  const order=shuffle([...Array(NS).keys()]);
+  const all=TUT&&TUT.use?(TUT.use===6?[3,4,5,6,7,8]:[0,1,2,3,4,5,6,7,8]):[...Array(NP).keys()];
+  const order=TUT&&TUT.use?shuffle(all.slice()):shuffle([...Array(NS).keys()]);
   const locked=order.slice(0,L);
   const easy=shuffle(all.filter(p=>!locked.includes(p))).slice(0,5);
   const lay=Array.from({length:NP},()=>[]);
@@ -529,6 +548,11 @@ function newLevel(lv){
       idx+=k; lay[p].push(arr);
     }
   }
+  if(lv===1){
+    // Lv1は決まった並び：となりの台へ1つ動かすと最初の1セットが消える
+    const [a,b,c,d]=types;lay.forEach(l=>l.length=0);
+    [[a,a,null],[b,a,c],[null,b,null],[c,null,d],[d,d,null],[b,c,null]].forEach((r,i)=>lay[3+i].push(r));
+  }
   const pods=lay.map((l,i)=>({slots:l.shift()||[null,null,null],layers:l,lock:null,busy:0,belt:i>=NS}));
   // ふた：中に入っていない種類をカギにする
   const inLocked=new Set();locked.forEach(p=>{pods[p].slots.forEach(t=>t!=null&&inLocked.add(t));pods[p].layers.forEach(L=>L.forEach(t=>t!=null&&inLocked.add(t)));});
@@ -538,7 +562,7 @@ function newLevel(lv){
   const TL=Math.max(300,Math.ceil(S*12/30)*30);
   G={lv,gm,pods,ns:NS,nb:NB,sets:0,total:S,time:TL,maxTime:TL,freeze:0,combo:0,lastClear:-1e9,
      belt:belt?{cells:belt,off:0}:null,pbelt:gm.pod?{off:0}:null,
-     boost:{shf:1,mag:1,frz:1},aid:{ufo:1,ext:1},over:false,paused:true,started:false};
+     boost:{shf:lv>=3?1:0,mag:lv>=4?1:0,frz:lv>=5?1:0},aid:{ufo:1,ext:1},over:false,paused:true,started:false};
   buildCells(NS,NB);
   ptrack.classList.toggle('on',gm.pod);itrack.classList.toggle('on',gm.item);
   layout();
@@ -610,7 +634,9 @@ function updHud(){
   $('#timep').classList.toggle('warn',G.time<20&&G.freeze<=0);
 }
 function updBoost(){
-  [['shf','Shf'],['mag','Mag'],['frz','Frz']].forEach(([k,id])=>{$('#n'+id).textContent=G.boost[k];$('#b'+id).classList.toggle('off',G.boost[k]<=0);});
+  const need={shf:3,mag:4,frz:5};
+  [['shf','Shf'],['mag','Mag'],['frz','Frz']].forEach(([k,id])=>{const lock=G.lv<need[k];$('#n'+id).textContent=lock?'':G.boost[k];
+    $('#b'+id).classList.toggle('off',G.boost[k]<=0);$('#b'+id).classList.toggle('locked',lock);});
 }
 function layout(){
   const b=$('#board'),W=b.clientWidth-40,H=b.clientHeight-14;
@@ -687,6 +713,7 @@ function clearPodNow(p){
 }
 function onSet(t){
   G.sets++;updHud();
+  if(tipMoveOn){seenTip('move');hideTip();if(!TIPS.clear)setTimeout(()=>{if(G&&!G.over&&G.sets<G.total)showTip('clear',$('#setp'),'やったね！ この調子で、<b>ぜんぶ消したらクリア</b>。<br>上の数字が、消したセットの数だよ');},700);}
   G.pods.forEach((P,p)=>{
     if(P.lock===t){
       P.busy++;const lid=cells[p].querySelector('.lid');if(lid)lid.classList.add('open');sfx.lid();
@@ -847,7 +874,7 @@ addEventListener('pointerup',e=>{
 addEventListener('pointercancel',()=>{if(drag){const pc=srcEl(drag.src);pc&&pc.classList.remove('ghost');drag=null;fl.style.display='none';hoverAt(null);}});
 
 /* ===================== ブースター ===================== */
-$('#bShf').onclick=()=>{if(!G||G.over||G.paused)return;audioInit();doShuffle();};
+$('#bShf').onclick=()=>{if(!G||G.over||G.paused)return;audioInit();if(doShuffle())tipPressed('shf');};
 // シャッフル：1組は必ず3つそろうようにする
 function shufPlan(){
   // ふたのない台の見えている子を数える。3つ以上の子がいればそれ、いなければ2つの子＋下の段（またはベルト）から1つ連れてくる
@@ -922,7 +949,7 @@ function doShuffle(){
 $('#bMag').onclick=()=>{
   if(!G||G.over||G.paused)return;audioInit();
   if(G.boost.mag<=0||anyBusy()){sfx.no();return;}
-  doUfo(true);
+  if(doUfo(true))tipPressed('mag');
 };
 // UFO：いちばん多く見えている子を3つ吸い上げて1セット消す（useBoost=false は「詰まった」ときのたすけ用）
 function doUfo(useBoost){
@@ -970,7 +997,7 @@ function doUfo(useBoost){
 $('#bFrz').onclick=()=>{
   if(!G||G.over||G.paused)return;audioInit();
   if(G.boost.frz<=0){sfx.no();return;}
-  G.boost.frz--;G.freeze+=15;updBoost();updHud();sfx.freeze();
+  G.boost.frz--;G.freeze+=15;updBoost();updHud();sfx.freeze();tipPressed('frz');
   // 演出：白く光って、大きな雪の結晶がくるっと出る。止まっている間は画面のふちが凍る
   const fx=document.createElement('div');fx.className='frostFx';document.body.appendChild(fx);setTimeout(()=>fx.remove(),800);
   const fl=document.createElement('div');fl.className='frostFlake';
@@ -993,7 +1020,64 @@ function loop(now){
 requestAnimationFrame(loop);
 
 const show=id=>{document.querySelectorAll('.ov').forEach(o=>o.classList.toggle('show',o.id===id));};
+// ---- チュートリアルの説明（はじめて出たときだけ） ----
+let TIPS={};try{TIPS=JSON.parse(localStorage.getItem('slimeSortTips')||'{}');}catch(e){}
+let tipEls=[],tipAnim=null,tipMoveOn=false,tipWait=null;
+// ボタンが使えるようになるレベルと、その説明（押してもらってから、なにが起きたかを説明する）
+const BTIP={3:{id:'shf',btn:'#bShf',text:'<b>シャッフル</b>が使えるようになったよ！<br>押してみよう',after:'台の子を入れかえて、<b>1組は必ずそろう</b>よ。<br>こまったときに使ってね（1ステージに1回）'},
+  4:{id:'mag',btn:'#bMag',text:'<b>UFO</b>が使えるようになったよ！<br>押してみよう',after:'いちばん多く見えている子を<br><b>3つ吸い上げて</b>くれるよ（1ステージに1回）'},
+  5:{id:'frz',btn:'#bFrz',text:'<b>時間を止める</b>が使えるようになったよ！<br>押してみよう',after:'<b>15秒</b>だけ時間が止まるよ。<br>そのあいだにどんどん消そう（1ステージに1回）'}};
+function tipPressed(id){if(tipWait!==id)return;tipWait=null;seenTip(id);hideTip();const t=Object.values(BTIP).find(x=>x.id===id);
+  setTimeout(()=>{if(G&&!G.over)showTip(id+'2',null,t.after);},id==='mag'?2100:1400);}
+function hideTip(){tipEls.forEach(e=>e.remove());tipEls=[];if(tipAnim){tipAnim.cancel();tipAnim=null;}tipMoveOn=false;tipWait=null;}
+function seenTip(id){TIPS[id]=1;try{localStorage.setItem('slimeSortTips',JSON.stringify(TIPS));}catch(e){}}
+function showTip(id,target,text,opt={}){
+  hideTip();
+  const r=target?target.getBoundingClientRect():null,pad=6;
+  if(r){const ring=document.createElement('div');ring.className='tipRing'+(opt.nodim?' nodim':'');
+    ring.style.cssText+=`left:${r.left-pad}px;top:${r.top-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px`;document.body.appendChild(ring);tipEls.push(ring);}
+  const box=document.createElement('div');box.className='tipBox';box.innerHTML=text+(opt.ok===false?'':'<br><button class="btn jelly">OK</button>');
+  document.body.appendChild(box);tipEls.push(box);
+  const bh=box.offsetHeight,H=innerHeight;
+  let top=r?(r.top>H*.5?r.top-pad-bh-14:r.bottom+pad+14):H*.38;
+  if(opt.at==='top')top=Math.max(64,(r?r.top:H*.4)-bh-60);
+  box.style.top=Math.max(60,Math.min(H-bh-12,top))+'px';
+  if(opt.ok!==false){
+    const was=G&&!G.paused;if(G)G.paused=true;
+    box.querySelector('.btn').onclick=()=>{seenTip(id);hideTip();if(G&&was)G.paused=false;if(opt.next)opt.next();};
+  }
+}
+function tipsAtStart(){
+  if(!G)return;const lv=G.lv;
+  setTimeout(()=>{
+    if(!G||G.lv!==lv||!G.started)return;
+    if(lv===1&&!TIPS.move){
+      // 動かしてみよう：となりの台へ動かす手本をくり返し見せる
+      const from=cells[4].querySelector('.slot[data-s="1"] .pc'),to=cells[3].querySelector('.slot[data-s="2"]');
+      if(!from||!to)return;
+      showTip('move',null,'おなじ子を<b>3つ</b>、おなじ台にそろえると消えるよ。<br>この子を、となりの台へ動かしてみよう',{ok:false});
+      const box=tipEls[0];box.style.top=Math.max(60,cells[3].getBoundingClientRect().top-box.offsetHeight-24)+'px';
+      const a=from.getBoundingClientRect(),b=to.getBoundingClientRect();
+      const g=document.createElement('div');g.className='tipGhost';g.style.width=a.width+'px';g.style.height=a.height+'px';
+      g.innerHTML=svg(G.pods[4].slots[1])+'<div class="tipFinger"></div>';document.body.appendChild(g);tipEls.push(g);
+      const T=(x,y,o)=>({transform:`translate(${x}px,${y}px)`,opacity:o});
+      tipAnim=g.animate([T(a.left,a.top,0),T(a.left,a.top-6,.85),T(b.left,b.top-6,.85),T(b.left,b.top,0)],{duration:1700,iterations:Infinity,easing:'ease-in-out'});
+      tipMoveOn=true;
+    }else if(lv===2&&!TIPS.plate){
+      const p=G.pods.findIndex(P=>P.layers.length>0);if(p>=0)showTip('plate',cells[p],'台の下のお皿は、<b>まだ下に子がいる</b>しるし。<br>台をからっぽにすると、下から次の子が上がってくるよ');
+    }else if(BTIP[lv]&&!TIPS[BTIP[lv].id]){
+      const t=BTIP[lv];showTip(t.id,$(t.btn),t.text,{ok:false,boxAbove:true});tipWait=t.id;
+    }else if(lv===6&&!TIPS.lid){
+      const p=G.pods.findIndex(P=>P.lock!=null);if(p>=0)showTip('lid',cells[p],'<b>ふたつきの台</b>は、ふたに描かれた子を<br>1セット消すと開くよ');
+    }else if(G.gm.pod&&!TIPS.pbelt){
+      showTip('pbelt',$('#ptrack'),'いちばん下の台は、<b>ベルトに乗って流れる</b>よ。<br>流れている台にも、入れたり出したりできるよ');
+    }else if(G.gm.item&&!TIPS.ibelt){
+      showTip('ibelt',$('#itrack'),'ベルトに乗って、<b>子が1つずつ流れてくる</b>よ。<br>取って台に入れたり、台の子をすきまに置いたりできるよ');
+    }
+  },350);
+}
 function openStart(){
+  hideTip();
   newLevel(LV);
   $('#stTitle').textContent='Lv.'+LV;
   $('#stGoal').textContent=`${G.total}セット けしてね（${fmt(G.time)}）`;
@@ -1090,7 +1174,7 @@ function openHelp(){
 $('#help').onclick=()=>{if(!G||G.over)return;openHelp();};
 $('#btnHow').onclick=openHelp;
 $('#btnHelpClose').onclick=()=>{if(helpBack){show(helpBack);}else{if(G&&G.started&&!G.over){G.paused=false;bgmPlay();}show(null);}};
-$('#btnStart').onclick=()=>{audioInit();G.paused=false;G.started=true;show(null);bgmPlay();};
+$('#btnStart').onclick=()=>{audioInit();G.paused=false;G.started=true;show(null);bgmPlay();tipsAtStart();};
 $('#pause').onclick=()=>{if(!G||G.over||!G.started)return;G.paused=true;bgmStop();show('ovPause');};
 $('#btnResume').onclick=()=>{G.paused=false;show(null);bgmPlay();};
 $('#btnRetry1').onclick=$('#btnRetry2').onclick=$('#btnRetry3').onclick=()=>openStart();
